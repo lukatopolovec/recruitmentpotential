@@ -7,23 +7,70 @@ var dbSession = require('../../src/backend/dbSession.js');
 var cheerio = require('cheerio');
 var express = require('express');
 var Moment = require('moment');
+var schedule = require('node-schedule');
+
 
 var Server = function(port){  //defining server for export
 	var server = Percolator({'port':port, 'autoLink':false, 'staticDir':__dirname+'/../frontend'}); 
 
-	getDataFromFeriWebPage();
 
-	function getDataFromFeriWebPage()
-	{
-		var opts = {
-			uri: 'https://www.parsehub.com/api/v2/runs/t1ux73YiSpoT/data?api_key=twAgSfGzzLtgax_mVwPvSfX8',
-			gzip: true,
-			json:true
-		}
+	var rule = new schedule.RecurrenceRule();
+	rule.minute = new schedule.Range(0,59,3); //how frequently should we start a new run job on parsehub. Every 3 minute
 
-		request(opts, function (err, res, body) {
+	var j = schedule.scheduleJob(rule, function(){
+		console.log("ParseHub job started - it takes some time to get result"); //
+
+		runParseEvent(function(parseHubJobValues){
+			console.log(parseHubJobValues.run_token + ":date" + parseHubJobValues.start_time) ;
+
+			setTimeout(function () { 
+				console.log('Parse hub - read results'); 
+
+				getDataFromFeriWebPage(parseHubJobValues.run_token);
+
+			}, 1000*60*1.5);  
+
+		});
+
+
+	});
+
+
+
+	function runParseEvent(callback){
+
+	//we need api key and project
+	var opts = {
+		uri: 'https://www.parsehub.com/api/v2/projects/tcaUCut8Rx2L/run?api_key=twAgSfGzzLtgax_mVwPvSfX8',
+		gzip: true,
+		json:true
+	}
+
+	request.post(opts, function (err, res, body) {
+	 		// now body and res.body both will contain decoded content.	 		
+	 		var parseHubJobValues = {'run_token': body.run_token, 'start_time': body.start_time}
+	 		callback(parseHubJobValues);
+
+	 	}).on('error',(e)=>{
+	 		console.error(e);
+	 	});
+
+	 }
+
+
+
+
+	 function getDataFromFeriWebPage(lastRunToken)
+	 {
+
+	 	var opts = {
+	 		uri: 'https://www.parsehub.com/api/v2/runs/'+lastRunToken+'/data?api_key=twAgSfGzzLtgax_mVwPvSfX8',
+	 		gzip: true,
+	 		json:true
+	 	}
+
+	 	request(opts, function (err, res, body) {
  		// now body and res.body both will contain decoded content.
- 		console.log("v requestu"); 	 	
  		writeThesesInDB(body.zadnjeDiplome,res);
 
 
