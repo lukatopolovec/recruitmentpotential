@@ -17,25 +17,39 @@ var Server = function(port){  //defining server for export
 	var rule = new schedule.RecurrenceRule();
 	rule.minute = new schedule.Range(0,59,3); //how frequently should we start a new run job on parsehub. Every 3 minute
 
-	var j = schedule.scheduleJob(rule, function(){
-		console.log("ParseHub job started - it takes some time to get result"); //
+	// var j = schedule.scheduleJob(rule, function(){
+	// 	console.log("ParseHub job started - it takes some time to get result"); //
 
-		runParseEvent(function(parseHubJobValues){
-			console.log(parseHubJobValues.run_token + ":date" + parseHubJobValues.start_time) ;
+	// 	runParseEvent(function(parseHubJobValues){
+	// 		console.log(parseHubJobValues.run_token + ":date" + parseHubJobValues.start_time) ;
 
-			setTimeout(function () { 
-				console.log('Parse hub - read results'); 
+	// 		setTimeout(function () { 
+	// 			console.log('Parse hub - read results'); 
 
-				getDataFromFeriWebPage(parseHubJobValues.run_token);
+	// 			getDataFromFeriWebPage(parseHubJobValues.run_token);
 
-			}, 1000*60*1.5);  
+	// 		}, 1000*60*1.5);  
 
-		});
+	// 	});
 
+
+	// });
+
+	server.route('/api/getstudents',{
+		GET:function(req,res){
+			dbSession.fetchAll('Select id, student, titletheses, mentor, dateadded FROM student', function(err, rows){
+				if(err)
+				{
+					console.log(err);
+					res.status.internalServerError(err);
+				} else
+				{
+					res.collection(rows).send();
+				}
+			});			
+		}
 
 	});
-
-
 
 	function runParseEvent(callback){
 
@@ -83,6 +97,7 @@ var Server = function(port){  //defining server for export
  function writeThesesInDB(thesesJson,res)
  {
 
+
  	thesesJson.forEach(function(item){
 
  		//for each item we have to parse avtor and mentor
@@ -110,7 +125,7 @@ var Server = function(port){  //defining server for export
 
  function getAvtorMentor(url, callbackJson)
  {
-
+ 	console.log("url"+url);
  	var avtor1, mentor1;
 
 
@@ -135,7 +150,6 @@ var Server = function(port){  //defining server for export
 
 });
  }
-
 
 
  return server;
