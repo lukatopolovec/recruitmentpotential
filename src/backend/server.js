@@ -14,9 +14,9 @@ var Server = function(port){  //defining server for export
 	var server = Percolator({'port':port, 'autoLink':false, 'staticDir':__dirname+'/../frontend'}); 
 
 
-	var rule = new schedule.RecurrenceRule();
-	rule.minute = new schedule.Range(0,59,3); //how frequently should we start a new run job on parsehub. Every 3 minute
-
+	// var rule = new schedule.RecurrenceRule();
+	// rule.minute = new schedule.Range(0,59,1); //how frequently should we start a new run job on parsehub. Every 3 minute
+	
 	// var j = schedule.scheduleJob(rule, function(){
 	// 	console.log("ParseHub job started - it takes some time to get result"); //
 
@@ -35,8 +35,15 @@ var Server = function(port){  //defining server for export
 
 	// });
 
+	//getDataFromFeriWebPage(parseHubJobValues.run_token);
+	getDataFromFeriWebPage("tOmT9T2jUBZ5");
+
+
 	server.route('/api/getstudents',{
+
+
 		GET:function(req,res){
+			console.log("smo v apiju get students");
 			dbSession.fetchAll('Select id, student, titletheses, mentor, dateadded FROM student', function(err, rows){
 				if(err)
 				{
@@ -49,6 +56,13 @@ var Server = function(port){  //defining server for export
 			});			
 		}
 
+	});
+
+
+	server.route('/luka',{
+			GET:function(req,res){
+			console.log("smo v apiju get students");
+		}
 	});
 
 	function runParseEvent(callback){
@@ -96,36 +110,72 @@ var Server = function(port){  //defining server for export
 
  function writeThesesInDB(thesesJson,res)
  {
+ 
+ 	var inProgress = 0;
+	var numberOfThesesAdded = 0;
+	var jsonToRSS = [];
 
+ 	thesesJson.forEach(function(item, index){ 	
+ 		//we check if the item is already added to db
+ 		dbSession.fetchAll('SELECT * FROM student WHERE urltheses = ?', item.url, function (err, results) {
 
- 	thesesJson.forEach(function(item){
+ 			if (results.length<=0)
+ 			{
 
- 		//for each item we have to parse avtor and mentor
- 		getAvtorMentor(item.url, function(avtorMentorJson){
+ 				//samo to je pomembno 
 
- 			var avtorBetterForm = avtorMentorJson.avtor.split(",");
+  		  	//in case item is not in the databse yet we add it to the database:  
+  		  		//for each item we have to parse avtor and mentor
+  		  		getAvtorMentor(item.url, function(avtorMentorJson){
+  		  			var avtorBetterForm = avtorMentorJson.avtor.split(",");
+  		  			dbSession.query('INSERT into student (titletheses,urltheses,student,mentor, dateadded) VALUES (?,?,?,?,?);',
+  		  				[item.name,item.url,avtorBetterForm[1] + avtorBetterForm[0] ,avtorMentorJson.mentor,Date.now()], function(err,results){  		  					
+	  		  					if(err){
+	  		  						console.log("error:"+err);
+	  		  					} else{
+	  		  						console.log("dodan link v podatkovno bazo:"+item.url);  		
+	  		  						numberOfThesesAdded++;
+	  		  						jsonToRSS.push([item.name,item.url,avtorBetterForm[1] + avtorBetterForm[0] ,avtorMentorJson.mentor,Date.now()]);	  		  						
+	  		  						console.log("numberOfThesesAdded:"+numberOfThesesAdded);
 
- 			dbSession.query('INSERT into student (titletheses,urltheses,student,mentor, dateadded) VALUES (?,?,?,?,?);',
- 				[item.name,item.url,avtorBetterForm[1] + avtorBetterForm[0] ,avtorMentorJson.mentor,Date.now()], function(err,results){
+	  		  					}
+	  		  					inProgress++;
+	  		  					console.log("else in progress:"+inProgress);
+  		  						if(inProgress==Object.keys(thesesJson).length){
+  		  							//call callback end of query
+  		  							console.log("Dodali smo nove diplome - INSERT:"+numberOfThesesAdded);
+  		  							console.dir(jsonToRSS);
+  		  						}
 
+  		  					});
+  		  				});
+  		  		}
+  		  		else  
+  		  		{
+  		  				inProgress++;
+  		  				console.log("inProgress:"+inProgress + ":Object.keys(thesesJson).length:" +Object.keys(thesesJson).length );
+  		  				if(inProgress==Object.keys(thesesJson).length){
+  		  						console.log("Dodali smo nove diplome - ZADNJA verzija:"+numberOfThesesAdded);
+  		  						//call callback end of query
+  		  						console.dir(jsonToRSS);
+  		  				}
+  		  		}
+  		  	
+  		  		
 
- 					if(err){
- 						console.log("error:"+err);
+  		  }); 	
 
- 					} else{
- 						console.log("added");
- 					}
+ 	
 
- 				});
- 		});
+ 	}); 	
 
- 	}); 		
+ 		
  }
 
 
  function getAvtorMentor(url, callbackJson)
  {
- 	console.log("url"+url);
+ 	
  	var avtor1, mentor1;
 
 
