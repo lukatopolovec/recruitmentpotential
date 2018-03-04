@@ -8,7 +8,9 @@ var dbWrapper;
 
 
 if(dbOptions.driver ===  "sqlite3"){
+	 console.log(dbOptions.filename);
 	var dbWrapper = new DBWrapper("sqlite3", {'path': dbOptions.filename});
+
 } else if(dbOptions.driver === 'mysql'){
 	dbWrapper = new DBWrapper('mysql', {
 		'host' : dbOptions.host,

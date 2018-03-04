@@ -1,0 +1,20 @@
+{
+
+	"test":{
+			"driver":"sqlite3",
+			"filename":"/var/tmp/diploma_master.test.sqlite"
+	},
+
+	"dev":{
+		"driver":"sqlite3",
+		"filename":"/var/tmp/diploma_master.dev.sqlite"
+	},
+
+
+	"production":{
+		"driver":"sqlite3",
+		"filename":"db/diploma_master.prod.sqlite"
+	}
+
+
+}

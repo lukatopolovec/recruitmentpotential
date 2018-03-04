@@ -17,22 +17,28 @@ var Server = function(port){  //defining server for export
 	var s3 = new AWS.S3({'region':'eu-west-1'});
 
 	var rule = new schedule.RecurrenceRule();
-	rule.minute = new schedule.Range(0,59,1); //how frequently should we start a new run job on parsehub. Every 3 minute
+	rule.seconds = [0,new schedule.Range(10,20,30,40,50)]; //how frequently should we start a new run job on parsehub. Every 3 minute
+	//rule.seconds = 5; //vsako minuto
+
+	var casZacetek = 0; 
+	var vmesniCas = 0; 
+	//var j = schedule.scheduleJob(rule, function(){
+	var j = schedule.scheduleJob('45 * * * *', function(){
+
 	
-	var j = schedule.scheduleJob(rule, function(){
-		console.log("ParseHub job started - it takes some time to get result"); //
+		console.log("ParseHub job started - it takes some time to get result: "+ Date.now());
 
-		runParseEvent(function(parseHubJobValues){
-			console.log(parseHubJobValues.run_token + ":date" + parseHubJobValues.start_time) ;
+				runParseEvent(function(parseHubJobValues){
+					console.log(parseHubJobValues.run_token + ":date" + parseHubJobValues.start_time) ;
 
-			setTimeout(function () { 
-				console.log('Parse hub - read results'); 
+						setTimeout(function () { 
+							console.log('Parse hub - read results - setTimeout'); 
 
-				getDataFromFeriWebPage(parseHubJobValues.run_token);
+							getDataFromFeriWebPage(parseHubJobValues.run_token);
 
-			}, 1000*60*4);  
+						}, 3000*60);  
 
-		});
+				 });
 
 
 	});
@@ -40,7 +46,7 @@ var Server = function(port){  //defining server for export
 	
 
 	//getDataFromFeriWebPage(parseHubJobValues.run_token);
-	//getDataFromFeriWebPage("t2vbxgxj2L5H");
+	//getDataFromFeriWebPage("t5fVF28akEGk");
 
 
 
