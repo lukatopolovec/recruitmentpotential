@@ -1,5 +1,4 @@
 'use strict';
-
 var Percolator = require('percolator').Percolator; //easy to generate API
 const https = require('https');
 var request = require('request');
@@ -8,11 +7,14 @@ var cheerio = require('cheerio');
 var express = require('express');
 var Moment = require('moment');
 var schedule = require('node-schedule');
-
+var fs = require('fs');
+var jstoxml = require('jstoxml');
+const Feed = require('feed')
+var AWS = require("aws-sdk");
 
 var Server = function(port){  //defining server for export
 	var server = Percolator({'port':port, 'autoLink':false, 'staticDir':__dirname+'/../frontend'}); 
-
+	var s3 = new AWS.S3({'region':'eu-west-1'});
 
 	// var rule = new schedule.RecurrenceRule();
 	// rule.minute = new schedule.Range(0,59,1); //how frequently should we start a new run job on parsehub. Every 3 minute
@@ -35,8 +37,41 @@ var Server = function(port){  //defining server for export
 
 	// });
 
+	
+	
+
+
 	//getDataFromFeriWebPage(parseHubJobValues.run_token);
-	getDataFromFeriWebPage("tOmT9T2jUBZ5");
+		getDataFromFeriWebPage("tOmT9T2jUBZ5");
+
+
+	
+	
+
+
+
+
+
+function uploadXMLtoBucket(xml)
+{
+		var params = {
+		Key: "rssthesesfeed.xml",
+		Bucket:"nodelukacrawlers",
+		Body: xml,
+		ACL:"public-read",
+	}
+
+	s3.putObject(params, function(err,data){
+		if(err){
+			    console.log(err);
+		}
+		else {
+			console.log("Uspesno shranjeno na AWS");
+		}
+
+	});			
+}
+
 
 
 	server.route('/api/getstudents',{
@@ -136,41 +171,68 @@ var Server = function(port){  //defining server for export
 	  		  						console.log("dodan link v podatkovno bazo:"+item.url);  		
 	  		  						numberOfThesesAdded++;
 	  		  						jsonToRSS.push([item.name,item.url,avtorBetterForm[1] + avtorBetterForm[0] ,avtorMentorJson.mentor,Date.now()]);	  		  						
-	  		  						console.log("numberOfThesesAdded:"+numberOfThesesAdded);
 
 	  		  					}
 	  		  					inProgress++;
 	  		  					console.log("else in progress:"+inProgress);
   		  						if(inProgress==Object.keys(thesesJson).length){
-  		  							//call callback end of query
-  		  							console.log("Dodali smo nove diplome - INSERT:"+numberOfThesesAdded);
-  		  							console.dir(jsonToRSS);
+  		  							//call callback end of query  		  						
+  		  							exportNewThesisToRSS(jsonToRSS);
   		  						}
-
   		  					});
   		  				});
   		  		}
   		  		else  
   		  		{
   		  				inProgress++;
-  		  				console.log("inProgress:"+inProgress + ":Object.keys(thesesJson).length:" +Object.keys(thesesJson).length );
-  		  				if(inProgress==Object.keys(thesesJson).length){
-  		  						console.log("Dodali smo nove diplome - ZADNJA verzija:"+numberOfThesesAdded);
-  		  						//call callback end of query
-  		  						console.dir(jsonToRSS);
+  		  				if(inProgress==Object.keys(thesesJson).length){  		  						
+  		  						exportNewThesisToRSS(jsonToRSS);
   		  				}
-  		  		}
-  		  	
-  		  		
-
-  		  }); 	
-
- 	
-
- 	}); 	
-
- 		
+  		  		} 
+  		  }); 	 	
+ 	}); 	 		
  }
+
+ function exportNewThesisToRSS(listOfNewTheses)
+ {
+ 	var date = new Date();
+
+ 	if(listOfNewTheses.length>0){
+  		console.log("Dodali smo nove diplome - funkcija:"+listOfNewTheses.length);
+ 		console.dir(listOfNewTheses);
+
+ 		let feed = new Feed({
+ 			title: 'Nove diplome',
+ 			link: 'https://s3-eu-west-1.amazonaws.com/nodelukacrawlers/rssthesesfeed.xml',
+ 			updated : date
+
+ 		});
+
+ 		listOfNewTheses.forEach(function(item)	{
+ 			feed.addItem({
+ 				title : item[0] + ", student:"+ item[2] + ", mentor:"+item[3],
+ 				link : item[1],
+ 				guid : item[0],
+ 				content : "student:"+ item[2] + ", mentor:"+item[4] + ", thesis title:"+ item[0] + " link:" + item[1] 					
+
+ 			});
+ 		});
+ 		console.log("ZAKLJUCEK ");	 		
+		//console.log(feed.rss2());
+
+		uploadXMLtoBucket(feed.rss2());
+		
+		fs.writeFile("RSS.xml", feed.rss2(), function(err) {
+			if(err) {
+				return console.log(err);
+			}
+			console.log("The file was saved!");
+		}); 
+ 		
+ 	}
+
+ }
+
 
 
  function getAvtorMentor(url, callbackJson)
