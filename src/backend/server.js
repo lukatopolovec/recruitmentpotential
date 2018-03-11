@@ -14,7 +14,8 @@ var AWS = require("aws-sdk");
 
 var Server = function(port){  //defining server for export
 	var server = Percolator({'port':port, 'autoLink':false, 'staticDir':__dirname+'/../frontend'}); 
-	var s3 = new AWS.S3({'region':'eu-west-1'});
+	AWS.config.loadFromPath('awsconfig.json');
+	var s3 = new AWS.S3();
 
 	var rule = new schedule.RecurrenceRule();
 	rule.seconds = [0,new schedule.Range(10,20,30,40,50)]; //how frequently should we start a new run job on parsehub. Every 3 minute
@@ -22,8 +23,9 @@ var Server = function(port){  //defining server for export
 
 	var casZacetek = 0; 
 	var vmesniCas = 0; 
-	//var j = schedule.scheduleJob(rule, function(){
-	var j = schedule.scheduleJob('45 * * * *', function(){
+
+
+	var j = schedule.scheduleJob('42 * * * *', function(){
 
 	
 		console.log("ParseHub job started - it takes some time to get result: "+ Date.now());
@@ -36,7 +38,7 @@ var Server = function(port){  //defining server for export
 
 							getDataFromFeriWebPage(parseHubJobValues.run_token);
 
-						}, 3000*60);  
+						}, 3000*60*5);  
 
 				 });
 
@@ -46,14 +48,14 @@ var Server = function(port){  //defining server for export
 	
 
 	//getDataFromFeriWebPage(parseHubJobValues.run_token);
-	//getDataFromFeriWebPage("t5fVF28akEGk");
+	//getDataFromFeriWebPage("t-7rwZYUMJem");
 
 
 
 function uploadXMLtoBucket(xml)
 {
 		var params = {
-		Key: "rssthesesfeed.xml",
+		Key: "students.xml",
 		Bucket:"nodelukacrawlers",
 		Body: xml,
 		ACL:"public-read",
@@ -154,20 +156,24 @@ function uploadXMLtoBucket(xml)
 
  	thesesJson.forEach(function(item, index){ 	
  		//we check if the item is already added to db
+
+
  		dbSession.fetchAll('SELECT * FROM student WHERE titletheses = ?', item.name, function (err, results) {
  			if (results.length<=0)
  			{
+
  				//this item doesn't exist yet (that's good)
- 				if(!item.url) //this means it doesn't have enought data. You can just import in the database. 
+ 				if(typeof item.url == 'undefined') //this means it doesn't have enought data. You can just import in the database. 
  				{
+ 					
 					dbSession.query('INSERT into student (titletheses,urltheses,student,mentor, dateadded) VALUES (?,?,?,?,?);',
-		  				[item.name,"",item.selection2 ,"unknown",Date.now()], function(err,results){  		  					
+		  				[item.name,"",item.avtor ,"unknown",Date.now()], function(err,results){  		  					
   		  					if(err){
   		  						console.log("Napaka pri dodajanju manjkajocega querya:"+err);
   		  					} else{
   		  						console.log("Zagovor diplome dodan v seznam:"+item.name);  		
   		  						numberOfThesesAdded++;
-  		  						jsonToRSS.push([item.name,"",item.selection2 ,item.selection1,Date.now()]);	  		  						
+  		  						jsonToRSS.push([item.name,"",item.avtor ,item.datumzagovora,Date.now()]);	  		  						
 
   		  					}
   		  					inProgress++;
@@ -183,7 +189,7 @@ function uploadXMLtoBucket(xml)
 	  		  			var avtorBetterForm = avtorMentorJson.avtor.split(",");
 	  		  			if(avtorBetterForm[0].length==0){
 	  		  				console.log("we have all the data");
-	  		  				avtorBetterForm = item.selection2;
+	  		  				avtorBetterForm = item.avtor;
 	  		  			}
 	  		  			dbSession.query('INSERT into student (titletheses,urltheses,student,mentor, dateadded) VALUES (?,?,?,?,?);',
 	  		  				[item.name,item.url,avtorBetterForm[1] + avtorBetterForm[0] ,avtorMentorJson.mentor,Date.now()], function(err,results){  		  					
@@ -226,7 +232,7 @@ function uploadXMLtoBucket(xml)
 
  		let feed = new Feed({
  			title: 'Nove diplome, in prihajajoči zagovori diplom',
- 			link: 'https://s3-eu-west-1.amazonaws.com/nodelukacrawlers/rssthesesfeed.xml',
+ 			link: 'https://s3-eu-west-1.amazonaws.com/nodelukacrawlers/students.xml',
  			updated : date
 
  		});
@@ -242,14 +248,12 @@ function uploadXMLtoBucket(xml)
  		console.log("ZAKLJUCEK ");	 		
 		//console.log(feed.rss2());
 
-		uploadXMLtoBucket(feed.rss2());
+		uploadXMLtoBucket(feed.rss2());		
 		
-		fs.writeFile("RSS.xml", feed.rss2(), function(err) {
-			if(err) {
-				return console.log(err);
-			}
-			console.log("The file was saved!");
-		});  		
+ 	}
+ 	else 
+ 	{
+ 		console.log("There was no new entries")
  	}
 
  }
