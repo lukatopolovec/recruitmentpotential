@@ -11,6 +11,8 @@ var fs = require('fs');
 var jstoxml = require('jstoxml');
 const Feed = require('feed')
 var AWS = require("aws-sdk");
+var uuid = require('node-uuid');
+
 
 var Server = function(port){  //defining server for export
 	var server = Percolator({'port':port, 'autoLink':false, 'staticDir':__dirname+'/../frontend'}); 
@@ -25,7 +27,7 @@ var Server = function(port){  //defining server for export
 	var vmesniCas = 0; 
 
 
-	var j = schedule.scheduleJob('42 * * * *', function(){
+	var j = schedule.scheduleJob('05 * * * *', function(){
 
 	
 		console.log("ParseHub job started - it takes some time to get result: "+ Date.now());
@@ -38,7 +40,7 @@ var Server = function(port){  //defining server for export
 
 							getDataFromFeriWebPage(parseHubJobValues.run_token);
 
-						}, 3000*60*5);  
+						}, 3000*60*10);  
 
 				 });
 
@@ -48,7 +50,7 @@ var Server = function(port){  //defining server for export
 	
 
 	//getDataFromFeriWebPage(parseHubJobValues.run_token);
-	//getDataFromFeriWebPage("t-7rwZYUMJem");
+//	getDataFromFeriWebPage("t-7rwZYUMJem");
 
 
 
@@ -173,7 +175,7 @@ function uploadXMLtoBucket(xml)
   		  					} else{
   		  						console.log("Zagovor diplome dodan v seznam:"+item.name);  		
   		  						numberOfThesesAdded++;
-  		  						jsonToRSS.push([item.name,"",item.avtor ,item.datumzagovora,Date.now()]);	  		  						
+  		  						jsonToRSS.push([item.name,"https://feri.um.si/",item.avtor ,item.datumzagovora,Date.now()]);	  		  						
 
   		  					}
   		  					inProgress++;
@@ -238,9 +240,13 @@ function uploadXMLtoBucket(xml)
  		});
 
  		listOfNewTheses.forEach(function(item)	{
+
+
  			feed.addItem({
  				title : item[0] + ", Študent:"+ item[2] + ", Mentor/Zagovor:"+item[3],
  				link : item[1],
+ 				guid: "https://feri.um.si/" + uuid.v4(),
+ 				date:date,
  				content : "student:"+ item[2] + ", mentor:"+item[4]					
 
  			});
